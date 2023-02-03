@@ -2,29 +2,14 @@ from datetime import datetime
 import logging
 import typer
 from pathlib import Path
-import itertools
 import sqlite3
 import log
-from enum import Enum
+
+import utilities
+import database
+
 
 app = typer.Typer(add_completion=False)
-
-
-class IncorrectGridFileFormat(Exception):
-    """Exception that will be thrown if the grid file is not in the right format"""
-
-    def __init__(self, line_num: int, grid_file: str) -> None:
-        super().__init__(
-            f"There was an error reading in the file: {grid_file} at line {line_num}. Program expected each line to be a separate ID."
-        )
-
-
-class LogLevel(str, Enum):
-    """Enum used to define the options for the log level in the cli"""
-
-    WARNING = "warning"
-    VERBOSE = "verbose"
-    DEBUG = "debug"
 
 
 def read_in_grids(grid_filepath: Path, logger: logging.Logger) -> list[str]:
@@ -51,7 +36,7 @@ def read_in_grids(grid_filepath: Path, logger: logging.Logger) -> list[str]:
     with open(grid_filepath, "r", encoding="utf-8") as grid_input:
         for line_num, line in enumerate(grid_input):
             if len(line.split("\t")) != 1:
-                raise IncorrectGridFileFormat(line_num, grid_filepath)
+                raise utilities.IncorrectGridFileFormat(line_num, grid_filepath)
             if "grid" not in line.lower():
                 return_list.append(line.strip())
 
@@ -115,38 +100,6 @@ def construct_query_str(grid_list: list[str]) -> str:
     start_str += "')"
 
     return start_str
-
-
-def get_connection(db: str, logger: logging.Logger) -> sqlite3.Connection:
-    """Function to connect to the database
-
-    Parameters
-    ----------
-    db : str
-        database name
-
-    logger : logging.Logger
-        logging object
-
-    Returns
-    -------
-    sqlite3.Connection
-        returns a connection object or terminates the
-        program if an error is encountered
-    """
-
-    try:
-        logger.info(f"Attempting to connect to the database at {db}")
-        conn = sqlite3.connect(db)
-    except sqlite3.Error as e:
-        logger.fatal(e)
-        logger.fatal("Error connecting to database")
-        typer.exit(1)
-
-    logger.info(f"Successfully connected to the database at {db}")
-
-    return conn
-
 
 def get_relatedness(
     query: str,
@@ -226,9 +179,8 @@ def write_to_file(
                     if estimated_rel >= relatedness_thres:
                         output.write(f"{pair_1}\t{pair_2}\t{estimated_rel}\n")
 
-
 @app.command()
-def main(
+def determine_relatedness(
     grid_file: Path = typer.Option(
         ...,
         "-g",
@@ -250,10 +202,10 @@ def main(
     relatedness_threshold: int = typer.Option(
         0,
         "--rel-threshold",
-        help="Relatedness threshold. Pairs with estimated relatedness values higher than this will be removed. 0 is the default and will keep individuals who are not related. Values should be between 0 and 9."
+        help="Relatedness threshold. Pairs with estimated relatedness values higher than this will be removed. 0 is the default and will keep individuals who are not related. Values should be between 0 and 9.",
     ),
-    loglevel: LogLevel = typer.Option(
-        LogLevel.WARNING.value,
+    loglevel: utilities.LogLevel = typer.Option(
+        utilities.LogLevel.WARNING.value,
         "--loglevel",
         "-l",
         help="This argument sets the logging level for the program. Accepts values 'debug', 'warning', and 'verbose'.",
@@ -266,7 +218,7 @@ def main(
         is_flag=True,
     ),
     log_filename: str = typer.Option(
-        "test.log", "--log-filename", help="Name for the log output file."
+        "test_determine_relatedness.log", "--log-filename", help="Name for the log output file."
     ),
 ) -> None:
     """Main function to pull the relatedness from the ersa database"""
@@ -294,20 +246,21 @@ def main(
         loglevel=loglevel,
         log_filename=log_filename,
     )
-
+    print("Aborting")
+    typer.Abort()
     logger.info(f"analysis start time: {start_time}")
 
     grid_list = read_in_grids(grid_file, logger)
 
-    # We are going to generate a dictionary that has all of the possible 
+    # We are going to generate a dictionary that has all of the possible
     # pairwise combinations
     combinations = determine_combinations(grid_list, logger)
 
     logger.info(f"Identified {len(grid_list)} from the input list")
-    # Constructing the grid string for all of the individuals in the query so 
+    # Constructing the grid string for all of the individuals in the query so
     # that we can use that string in the where clause
     grid_str = construct_query_str(grid_list)
-    
+
     # This will be the query string that we execute
     sql_str = (
         "SELECT * FROM "
@@ -319,12 +272,88 @@ def main(
     logger.debug(f"String used for SQL Query: \n {sql_str}")
 
     # getting the database connection
-    conn = get_connection(database_path, logger)
+    conn = database.get_connection(database_path, logger)
 
     with conn:
         get_relatedness(sql_str, conn, combinations, logger)
 
     write_to_file(combinations, output_path, relatedness_threshold)
+
+    end_time = datetime.now()
+
+    logger.info(f"analysis end time: {end_time}")
+
+    logger.info(f"Analysis runtime: {end_time - start_time}")
+
+
+@app.command(
+    help="Determine the distribution of relatedness within the cases and controls"
+)
+def gather_distributions(
+    case_control_file: Path = typer.Argument(
+        ...,
+        help="File that has cases and controls. Expects the first column to be IDs and the second column to be phenotype status of 0/1 where 1 indicates a case and 0 indicates controls",
+    ),
+    output: Path = typer.Argument(
+        ...,
+        help="Output for all output files. This should be a directory and then the file name without an extension",
+    ),
+    database_path: Path = typer.Argument(
+        ...,
+        help="Filepath to the sqlite database that has all the information about pairwise relatedness for individuals",
+    ),
+    cores: int = typer.Option(
+        1,
+        "-c",
+        "--cores",
+        help="number of cores to parallelize out to."
+    ),
+    loglevel: utilities.LogLevel = typer.Option(
+        utilities.LogLevel.WARNING.value,
+        "--loglevel",
+        "-l",
+        help="This argument sets the logging level for the program. Accepts values 'debug', 'warning', and 'verbose'.",
+        case_sensitive=True,
+    ),
+    log_to_console: bool = typer.Option(
+        False,
+        "--log-to-console",
+        help="Optional flag to log to only a file or also the console",
+        is_flag=True,
+    ),
+    log_filename: str = typer.Option(
+        "test_distributions.log", "--log-filename", help="Name for the log output file."
+    ),
+) -> None:
+    # getting the programs start time
+    start_time = datetime.now()
+
+    # creating the logger and then configuring it
+    logger = log.create_logger()
+
+    log.configure(
+        logger,
+        "./",
+        filename=log_filename,
+        loglevel=loglevel,
+        to_console=log_to_console,
+    )
+
+    # recording all the user inputs
+    log.record_inputs(
+        logger,
+        case_control_filepath=case_control_file,
+        database_path=database_path,
+        output_path=output,
+        core_count=cores,
+        loglevel=loglevel,
+        log_filename=log_filename,
+    )
+
+    logger.info(f"analysis start time: {start_time}")
+
+    # getting the database connection
+    conn = database.get_connection(database_path, logger)
 
     end_time = datetime.now()
 
