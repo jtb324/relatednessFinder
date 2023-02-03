@@ -9,7 +9,6 @@ readme="README.md"
 relatedness_finder = "relatednessFinder.relatedness_finder:app"
 
 [tool.poetry.dependencies]
-log = {path = "./relatednessFinder/log/", develop= false} 
 python = "^3.10"
 typer = {extras = ["all"], version = "^0.7.0"}
 
