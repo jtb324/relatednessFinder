@@ -272,7 +272,7 @@ def determine_relatedness(
     logger.debug(f"String used for SQL Query: \n {sql_str}")
 
     # getting the database connection
-    conn = database.get_connection(database_path, logger)
+    conn = database.get_connection(database_path, logger = logger)
 
     with conn:
         get_relatedness(sql_str, conn, combinations, logger)
@@ -353,8 +353,9 @@ def gather_distributions(
     logger.info(f"analysis start time: {start_time}")
 
     # getting the database connection
-    conn = database.get_connection(database_path, logger)
+    conn = database.get_connection(database_path, logger=logger)
 
+    conn.close()
     end_time = datetime.now()
 
     logger.info(f"analysis end time: {end_time}")

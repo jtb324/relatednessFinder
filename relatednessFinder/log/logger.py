@@ -1,5 +1,7 @@
+import functools
 import logging
 import os
+from typing import Any
 
 level_dict: dict[str, int] = {
     "verbose": logging.INFO,
@@ -83,3 +85,24 @@ def create_logger(
     logger = logging.getLogger(logger_name)
 
     return logger
+
+def log_msg(log_message: str = None):
+    def log_decorator(func):
+        @functools.wraps(func)
+        def log_to_file(*args, **kwargs) -> Any:
+            print(kwargs)
+            logger = kwargs["logger"]
+            logger.debug(log_message)
+            if logging.getLevelName(logger.level):
+                args_repr = [repr(a) for a in args]                      
+                kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]  
+                signature = ", ".join(args_repr + kwargs_repr)           
+                logger.debug(f"calling the function {func.__name__} with the arguments: {signature}")
+            try:
+                return_val = func(*args, **kwargs)
+            except Exception as e:
+                logger.fatal(e)
+                logger.fatal(f"Encountered an exception while running the function: {func.__name__}")
+            return return_val
+        return log_to_file
+    return log_decorator
