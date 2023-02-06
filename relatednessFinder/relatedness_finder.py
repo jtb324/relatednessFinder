@@ -12,43 +12,6 @@ import database
 app = typer.Typer(add_completion=False)
 
 
-def determine_combinations(
-    id_list: list[str], logger: logging.Logger
-) -> dict[str, dict[str, int]]:
-    """Function that will construct a dictionary that has all the possible pairs from the grid list.
-
-    Parameters
-    ----------
-    id_list : list[str]
-        list of id string
-
-    logger : logging.Logger
-        Logging object
-
-    Returns
-    -------
-    dict[str, dict[str, int]]
-        dictionary where the outer keys are ids and the inner keys are the se cond individual in the pair.
-        The inner value is going to be initialized at 0 and will be filled in with the estimated relatedness
-        value later on in the program
-    """
-    logger.debug("Creating the combinations of all pairwise individuals")
-
-    return_dict = {}
-
-    for grid in id_list:
-        return_dict.setdefault(
-            grid,
-            {
-                ind: 0
-                for ind in id_list
-                if ind != grid and ind not in return_dict.keys()
-            },
-        )
-
-    return return_dict
-
-
 def construct_query_str(grid_list: list[str]) -> str:
     """Function that will construct the sql string to use in the query
 
@@ -70,71 +33,21 @@ def construct_query_str(grid_list: list[str]) -> str:
 
     return start_str
 
-def get_relatedness(
-    query: str,
-    connection: sqlite3.Connection,
-    combinations: dict[str, dict[str, int]],
-    logger: logging.Logger,
-) -> dict[str, dict[str, int]]:
-    """Function that will execute the query
 
-    Parameters
-    ----------
-    query : str
-        string that contains the sql query to be executed
-
-    connection : sqlite3.Connection
-        Connection object
-
-    combinations : dict[str, dict[str, int]]
-        dictionary where both inner keys and outer keys are IDs represent individuals in a pair.
-        The inner value is the estimated relatedness for the pair. This value will be zero if there
-        is no significant relatedness
-
-    logger : logging.Logger
-        logging object
-
-    """
-    logger.debug("Executing the query")
-
-    cursor = connection.cursor()
-
-    cursor.execute(query)
-
-    rows = cursor.fetchall()
-
-    for row in rows:
-        # pull out the pair ids and the estimated relatedness
-        pair_1 = row[1]
-        pair_2 = row[2]
-        estimated_relatedness = row[3]
-
-        if inner_pair := combinations.get(pair_1, 0):
-            inner_pair[pair_2] = estimated_relatedness
-        else:
-            inner_pair = combinations.get(pair_2)
-            inner_pair[pair_1] = estimated_relatedness
-
-    return combinations
 
 
 def write_to_file(
-    results: dict[str, dict[str, int]], output_filename: Path, relatedness_thres: int
+    results: list[tuple[int, str, str, int]], output_filename: Path, relatedness_thres: int
 ) -> None:
     """Function that will write the output to a file
 
     Parameters
     ----------
-    combinations : dict[str, dict[str, int]]
-        dictionary where both inner keys and outer keys are IDs represent individuals in a pair.
-        The inner value is the estimated relatedness for the pair. This value will be zero if there
-        is no significant relatedness
+    results : list[tuple[int, str, str, int]]
+        list of tuples that contain information about the row index, ID1, ID2, and the relatedness value from the database query
 
     output_filename : Path
         Path to the output file
-
-    combinations : list[tuple[str, str]]
-        list of all the possible pairs from the ID list
 
     relatedness_thres : int
         threashold for the minimum relatedness allowed. Should be between 0-9. Nine will be considered the highest threshold. 0 would remove all of the non related people
@@ -142,11 +55,8 @@ def write_to_file(
     """
     with open(output_filename, "w", encoding="utf-8") as output:
         output.write("ID1\tID2\tEstimated_relatedness\n")
-        for pair_1, inner_dict in results.items():
-            if inner_dict:
-                for pair_2, estimated_rel in inner_dict.items():
-                    if estimated_rel >= relatedness_thres:
-                        output.write(f"{pair_1}\t{pair_2}\t{estimated_rel}\n")
+        for pair_result in results:
+            output.write(f"{pair_result[1]}\t{pair_result[2]}\t{pair_result[3]}\n")
 
 @app.command()
 def determine_relatedness(
@@ -154,7 +64,7 @@ def determine_relatedness(
         ...,
         "-g",
         "--grid-file",
-        help="Filepath to a tab separated text file that has a list of grids. Program expects for there to be two columns: grid and phenotype. Phenotype should have 1 for cases or 0 for controls. If you do not need to differientiate between cases and controls then just label all individuals as either 0 or 1",
+        help="Filepath to a tab separated text file that has a list of grids. Program expects for there to be two columns: grid and phenotype. Phenotype should have 1 for cases or 0 for controls. If you do not need to differientiate between cases and controls then just label all individuals as either 0 or 1. The file should not have a header",
     ),
     database_path: Path = typer.Option(
         ...,
@@ -220,11 +130,7 @@ def determine_relatedness(
 
     # We need to read in the grids. This function return a list of cases and controls. We 
     # only need the cases in this situation so we are ignoring the second return 
-    grid_list, _ = utilities.read_in_grids(grid_file, logger)
-
-    # We are going to generate a dictionary that has all of the possible
-    # pairwise combinations
-    combinations = determine_combinations(grid_list, logger)
+    grid_list = utilities.read_in_grids(grid_file, logger=logger)
 
     logger.info(f"Identified {len(grid_list)} from the input list")
     # Constructing the grid string for all of the individuals in the query so
@@ -245,9 +151,9 @@ def determine_relatedness(
     conn = database.get_connection(database_path, logger = logger)
 
     with conn:
-        get_relatedness(sql_str, conn, combinations, logger)
+        result = database.get_relatedness(sql_str, conn, logger = logger)
 
-    write_to_file(combinations, output_path, relatedness_threshold)
+    write_to_file(result, output_path, relatedness_threshold)
 
     end_time = datetime.now()
 
@@ -323,9 +229,9 @@ def gather_distributions(
 
     logger.info(f"analysis start time: {start_time}")
 
-    cases = utilities.read_in_grids(case_control_file, logger, "cases")
+    cases = utilities.read_in_grids(case_control_file, logger=logger,  case_or_control="cases")
     
-    controls = utilities.read_in_grids(case_control_file, logger, "controls")
+    controls = utilities.read_in_grids(case_control_file, logger, case_or_control="controls")
 
     logger.info(f"Identified {len(cases)} cases and {len(controls)} controls")
     # getting the database connection

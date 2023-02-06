@@ -90,7 +90,6 @@ def log_msg_debug(log_message: str = None):
     def log_decorator(func):
         @functools.wraps(func)
         def log_to_file(*args, **kwargs) -> Any:
-            print(kwargs)
             logger = kwargs["logger"]
             logger.debug(log_message)
             if logging.getLevelName(logger.level) == "DEBUG":

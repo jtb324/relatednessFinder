@@ -34,13 +34,33 @@ def get_connection(db: str, logger: logging.Logger = logging.getLogger("__main__
 
     return conn
 
-@log_msg_debug("Initializing parallel reading from the database")
-def parallel_reader(db_path: Path, logger: logging.Logger) -> None:
-    """Function that will read from the database using multiple streams to try to 
-    speed up the process.
-    
+@log_msg_debug("Executing query to get the relatedness for a list of individuals.")
+def get_relatedness(
+    query: str,
+    connection: sqlite3.Connection,
+    logger: logging.Logger,
+) -> list[tuple[int, str, str, int]]:
+    """Function that will execute the query
+
     Parameters
     ----------
-    db_path : Path
-        
+    query : str
+        string that contains the sql query to be executed
+
+    connection : sqlite3.Connection
+        Connection object
+
+    logger : logging.Logger
+        logging object
+
     """
+
+    cursor = connection.cursor()
+
+    cursor.execute(query)
+
+    rows = cursor.fetchall()
+
+    logger.debug(f"Returning {len(rows)} results from the database")
+
+    return rows

@@ -13,7 +13,7 @@ def read_in_grids(grid_filepath: Path, logger: logging.Logger, case_or_control: 
     grid_filepath : Path
         path to a tab separated text file that list all the grids that the user
         wishes to find values for. Expects two column: The IDs and phenotype (In 
-        that order). Header is optional
+        that order). Program expects no header
 
     logger : logging.Logger
         logging object
@@ -41,18 +41,19 @@ def read_in_grids(grid_filepath: Path, logger: logging.Logger, case_or_control: 
     with open(grid_filepath, "r", encoding="utf-8") as grid_input:
         match case_or_control:
             case "cases":
-                search_val = 1
+                search_val = "1"
             case "controls":
-                search_val = 0
+                search_val = "0"
             case _:
                 search_val = None
-            
+
         for line_num, line in enumerate(grid_input):
             split_line = line.split("\t")
             if len(split_line) != 2:
                 raise utilities.IncorrectGridFileFormat(line_num, grid_filepath)
-            if search_val and split_line[1] == search_val:
-                return_list.append(split_line[0])
+            if search_val:
+                if split_line[1] == search_val:
+                    return_list.append(split_line[0])
             else:
                 return_list.append(split_line[0])
 
