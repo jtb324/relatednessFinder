@@ -1,8 +1,9 @@
 import logging
+from pathlib import Path
 import sqlite3
-from log import log_msg
+from log import log_msg_debug
 
-@log_msg("Attempting to connect to the database")
+@log_msg_debug("Attempting to connect to the database")
 def get_connection(db: str, logger: logging.Logger = logging.getLogger("__main__")) -> sqlite3.Connection:
     """Function to connect to the database
 
@@ -32,3 +33,14 @@ def get_connection(db: str, logger: logging.Logger = logging.getLogger("__main__
     logger.info(f"Successfully connected to the database at {db}")
 
     return conn
+
+@log_msg_debug("Initializing parallel reading from the database")
+def parallel_reader(db_path: Path, logger: logging.Logger) -> None:
+    """Function that will read from the database using multiple streams to try to 
+    speed up the process.
+    
+    Parameters
+    ----------
+    db_path : Path
+        
+    """

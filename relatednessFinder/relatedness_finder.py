@@ -12,37 +12,6 @@ import database
 app = typer.Typer(add_completion=False)
 
 
-def read_in_grids(grid_filepath: Path, logger: logging.Logger) -> list[str]:
-    """Function that will read in all of the IDs from the provided file.
-
-    Parameters
-    ----------
-    grid_filepath : Path
-        path to a tab separated text file that list all the grids that the user
-        wishes to find values for
-
-    logger : logging.Logger
-        logging object
-
-    Returns
-    -------
-    list[str]
-        returns a list of IDs
-    """
-    logger.debug(f"Reading in grids from the file {grid_filepath}")
-
-    return_list = []
-
-    with open(grid_filepath, "r", encoding="utf-8") as grid_input:
-        for line_num, line in enumerate(grid_input):
-            if len(line.split("\t")) != 1:
-                raise utilities.IncorrectGridFileFormat(line_num, grid_filepath)
-            if "grid" not in line.lower():
-                return_list.append(line.strip())
-
-    return return_list
-
-
 def determine_combinations(
     id_list: list[str], logger: logging.Logger
 ) -> dict[str, dict[str, int]]:
@@ -185,7 +154,7 @@ def determine_relatedness(
         ...,
         "-g",
         "--grid-file",
-        help="Filepath to a text file that has a list of grids. Program expects for there to be one grid for each line of the file.",
+        help="Filepath to a tab separated text file that has a list of grids. Program expects for there to be two columns: grid and phenotype. Phenotype should have 1 for cases or 0 for controls. If you do not need to differientiate between cases and controls then just label all individuals as either 0 or 1",
     ),
     database_path: Path = typer.Option(
         ...,
@@ -246,11 +215,12 @@ def determine_relatedness(
         loglevel=loglevel,
         log_filename=log_filename,
     )
-    print("Aborting")
-    typer.Abort()
+  
     logger.info(f"analysis start time: {start_time}")
 
-    grid_list = read_in_grids(grid_file, logger)
+    # We need to read in the grids. This function return a list of cases and controls. We 
+    # only need the cases in this situation so we are ignoring the second return 
+    grid_list, _ = utilities.read_in_grids(grid_file, logger)
 
     # We are going to generate a dictionary that has all of the possible
     # pairwise combinations
@@ -285,6 +255,7 @@ def determine_relatedness(
 
     logger.info(f"Analysis runtime: {end_time - start_time}")
 
+####### From here on the fucntions will be used to 
 
 @app.command(
     help="Determine the distribution of relatedness within the cases and controls"
@@ -352,6 +323,11 @@ def gather_distributions(
 
     logger.info(f"analysis start time: {start_time}")
 
+    cases = utilities.read_in_grids(case_control_file, logger, "cases")
+    
+    controls = utilities.read_in_grids(case_control_file, logger, "controls")
+
+    logger.info(f"Identified {len(cases)} cases and {len(controls)} controls")
     # getting the database connection
     conn = database.get_connection(database_path, logger=logger)
 
