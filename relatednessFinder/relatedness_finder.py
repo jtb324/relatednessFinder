@@ -1,10 +1,10 @@
-import asyncio
 from datetime import datetime
 import os
 import typer
 from pathlib import Path
 import log
 
+import analysis
 import utilities
 import database
 
@@ -91,10 +91,13 @@ def determine_relatedness(
     database_obj = database.dbResults(database_path, table_name)
 
     # run the loop. If this ncounters an error then the user needs to hit control c to exit
-    asyncio.get_event_loop().run_until_complete(database.perform_db_operation(database_obj, logger, grid_list))
+    relatedness_results = database.get_relatedness(grid_list, database_obj,logger=logger)
     
+    for val in relatedness_results:
+        database_obj.case_results.extend(val)
 
     logger.debug(database_obj)
+
 
     utilities.write_to_file(database_obj, output_path, relatedness_threshold)
 
@@ -122,14 +125,8 @@ def gather_distributions(
         ...,
         help="Filepath to the sqlite database that has all the information about pairwise relatedness for individuals",
     ),
-    table_name: str = typer.Option(
-        ..., "-t", "--table-name", help="name of the table within the database"
-    ),
-    cores: int = typer.Option(
-        1,
-        "-c",
-        "--cores",
-        help="number of cores to parallelize out to."
+    table_name: str = typer.Argument(
+        ..., help="name of the table within the database"
     ),
     loglevel: utilities.LogLevel = typer.Option(
         utilities.LogLevel.WARNING.value,
@@ -168,26 +165,41 @@ def gather_distributions(
         case_control_filepath=case_control_file,
         database_path=database_path,
         output_path=output,
-        core_count=cores,
         loglevel=loglevel,
         log_filename=log_filename,
     )
 
     logger.info(f"analysis start time: {start_time}")
-
-    cases = utilities.read_in_grids(case_control_file, logger=logger,  case_or_control="cases")
     
-    controls = utilities.read_in_grids(case_control_file, logger, case_or_control="controls")
+    # Read in the cases and controls
+    cases = utilities.read_in_grids(case_control_file, logger = logger,  case_or_control="cases")
 
+    controls = utilities.read_in_grids(case_control_file, logger = logger, case_or_control="controls")
+    
     logger.info(f"Identified {len(cases)} cases and {len(controls)} controls")
-    # # getting the database connection
-    # conn = database.get_connection(database_path, logger=logger)
 
-    # conn.close()database_obj = database.dbResults(database_path, table_name)
 
     database_obj = database.dbResults(database_path, table_name)
-    # run the loop. If this ncounters an error then the user needs to hit control c to exit
-    asyncio.get_event_loop().run_until_complete(database.perform_db_operation(database_obj, logger, cases, controls))
+    
+    logger.info("Identifying relatedness for cases")
+    case_rel_results = database.get_relatedness(cases, database_obj, logger=logger)
+
+    database_obj.case_results =  analysis.generate_results_list(case_rel_results, logger)
+
+    logger.info("Identifying relatedness for controls")    
+    control_rel_results = database.get_relatedness(controls, database_obj, logger=logger)
+
+
+    database_obj.control_results = analysis.generate_results_list(control_rel_results, logger)
+
+    logger.info(f"Identified {len(database_obj.case_results)} case relatedness values and {len(database_obj.control_results)} control relatedness values from the database")
+    
+    logger.info("Plotting distributions of relatedness values for cases and then for controls")
+    
+    analysis.plot_distribution(database_obj.case_results, output, "cases.png", logger=logger)
+
+    analysis.plot_distribution(database_obj.control_results, output, "contols.png", logger=logger)
+
     end_time = datetime.now()
 
     logger.info(f"analysis end time: {end_time}")

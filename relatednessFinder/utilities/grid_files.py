@@ -48,7 +48,8 @@ def read_in_grids(grid_filepath: Path, logger: logging.Logger, case_or_control: 
                 search_val = None
 
         for line_num, line in enumerate(grid_input):
-            split_line = line.split("\t")
+            split_line = line.strip().split("\t")
+
             if len(split_line) != 2:
                 raise utilities.IncorrectGridFileFormat(line_num, grid_filepath)
             if search_val:

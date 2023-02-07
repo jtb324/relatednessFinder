@@ -104,7 +104,8 @@ def log_msg_debug(log_message: str = None):
             except Exception as e:
                 logger.critical(e)
                 logger.critical(f"Encountered an exception while running the function: {func.__name__}")
-                typer.abort()
+                typer.Abort()
+                return_val = 1
             return return_val
         return log_to_file
     return log_decorator

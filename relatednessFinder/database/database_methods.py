@@ -2,9 +2,10 @@ import asyncio
 import logging
 from pathlib import Path
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Generator
 
-import aiosqlite
+
 from log import log_msg_debug
 
 
@@ -12,19 +13,19 @@ from log import log_msg_debug
 class dbResults:
     database_path: Path
     table_name: str
-    case_results: list[tuple[int, str, str, int]] | None = None
-    control_results: list[tuple[int, str, str, int]] | None = None
+    case_results: list[Any] = field(default_factory = list)
+    control_results: list[Any] = field(default_factory = list)
 
 
 @log_msg_debug("Attempting to connect to the database")
-async def get_connection(
+def get_connection(
     db: Path, logger: logging.Logger = logging.getLogger("__main__")
 ) -> sqlite3.Connection:
     """Function to connect to the database
 
     Parameters
     ----------
-    db : str
+    db : Path
         database name
 
     logger : logging.Logger
@@ -44,7 +45,7 @@ async def get_connection(
 
     logger.info(f"Attempting to connect to the database at {db}")
 
-    conn = await aiosqlite.connect(db)
+    conn = sqlite3.connect(db)
 
     logger.info(f"Successfully connected to the database at {db}")
 
@@ -86,90 +87,42 @@ def construct_query_str(
 
 
 @log_msg_debug("Executing query to get the relatedness for a list of individuals.")
-async def get_relatedness(
+def get_relatedness(
     ind_list: list[str],
-    connection: sqlite3.Connection,
-    db_result_obj: dbResults,
-    case_or_control: str,
+    db_obj: dbResults,
     logger: logging.Logger,
-) -> None:
-    """Function that will execute the query
+) -> Generator[list[tuple[int, str, str, int]], None, None]:
+    """Function that will execute the query and return a generator 
+    object that has so many rows at a time
 
     Parameters
     ----------
+
     ind_list : list[str]
         list of individuals to find in the database
 
-    connection : sqlite3.Connection
-        database connection object to get the cursor from
-
-    db_result_obj: dbResults
-        class that will have results from the database
-
-    case_or_control : str
-        string telling whether we are finding a status for cases or controls
+    db_obj : dbResults
+        object that contains the results from the database in list, as well as the database path and the table name
 
     logger : logging.Logger
         logging object
 
     """
-
+    # we need to get the database connection
+    connection = get_connection(db_obj.database_path, logger=logger)
 
     # we need to then create the query string
-    query = construct_query_str(ind_list, db_result_obj, logger)
+    query = construct_query_str(ind_list, db_obj, logger)
 
-    cursor = await connection.cursor()
+    with connection:
+        cursor = connection.cursor()
 
-    await cursor.execute(query)
-
-    rows = await cursor.fetchall()
-
-    if case_or_control == "case":
-        db_result_obj.case_results = rows
-    else:
-        db_result_obj.control_results = rows
-
-    logger.debug(f"Returning {len(rows)} results from the database")
+        cursor.execute(query)
+        while (rows := cursor.fetchmany(size=20)):
+            yield rows
 
 
-async def perform_db_operation(
-    db_obj: dbResults,
-    logger: logging.Logger,
-    case_list: list[str],
-    control_list: list[str] | None = None,
-) -> None:
-    """Async Function that will be responsible for calling the async coroutine
-    get_relatedness to make the database query
-
-    Parameters
-    ----------
-
-    db_obj: dbResults
-        class that will have results from the database
-
-    logger : logging.Logger
-        logging object
-
-    case_list : list[str]
-        list of IDs for cases
-
-    control_list : list[str]
-        list of IDs for controls
-    """
-
-    # we need to get the database connection
-    connection = await get_connection(db_obj.database_path, logger=logger)
 
 
-    if control_list:
-        _  = await asyncio.gather(
-            get_relatedness(case_list, connection, db_obj, "case", logger=logger),
-            get_relatedness(control_list, connection, db_obj, "control", logger=logger),
-            return_exceptions=True
-        )
-    else:
-        _ = await asyncio.gather(get_relatedness(case_list, connection, db_obj, "case", logger=logger), return_exceptions=True)
-    
-    await connection.close()
     
     

@@ -1,1 +1,1 @@
-from .database_methods import dbResults, perform_db_operation
+from .database_methods import dbResults,  get_relatedness
