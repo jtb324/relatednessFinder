@@ -118,7 +118,6 @@ async def get_relatedness(
     # we need to then create the query string
     query = construct_query_str(ind_list, db_result_obj, logger)
 
-   
     cursor = await connection.cursor()
 
     await cursor.execute(query)
@@ -163,12 +162,14 @@ async def perform_db_operation(
 
 
     if control_list:
-        await asyncio.gather(
+        _  = await asyncio.gather(
             get_relatedness(case_list, connection, db_obj, "case", logger=logger),
             get_relatedness(control_list, connection, db_obj, "control", logger=logger),
+            return_exceptions=True
         )
     else:
-        await asyncio.gather(get_relatedness(case_list, connection, db_obj, "case", logger=logger))
+        _ = await asyncio.gather(get_relatedness(case_list, connection, db_obj, "case", logger=logger), return_exceptions=True)
     
     await connection.close()
+    
     

@@ -3,6 +3,8 @@ import logging
 import os
 from typing import Any
 
+import typer
+
 level_dict: dict[str, int] = {
     "verbose": logging.INFO,
     "debug": logging.DEBUG,
@@ -102,6 +104,7 @@ def log_msg_debug(log_message: str = None):
             except Exception as e:
                 logger.critical(e)
                 logger.critical(f"Encountered an exception while running the function: {func.__name__}")
+                typer.abort()
             return return_val
         return log_to_file
     return log_decorator

@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import os
 import typer
 from pathlib import Path
 import log
@@ -89,7 +90,9 @@ def determine_relatedness(
 
     database_obj = database.dbResults(database_path, table_name)
 
-    asyncio.run(database.perform_db_operation(database_obj, logger, grid_list))
+    # run the loop. If this ncounters an error then the user needs to hit control c to exit
+    asyncio.get_event_loop().run_until_complete(database.perform_db_operation(database_obj, logger, grid_list))
+    
 
     logger.debug(database_obj)
 
@@ -118,6 +121,9 @@ def gather_distributions(
     database_path: Path = typer.Argument(
         ...,
         help="Filepath to the sqlite database that has all the information about pairwise relatedness for individuals",
+    ),
+    table_name: str = typer.Option(
+        ..., "-t", "--table-name", help="name of the table within the database"
     ),
     cores: int = typer.Option(
         1,
@@ -174,10 +180,14 @@ def gather_distributions(
     controls = utilities.read_in_grids(case_control_file, logger, case_or_control="controls")
 
     logger.info(f"Identified {len(cases)} cases and {len(controls)} controls")
-    # getting the database connection
-    conn = database.get_connection(database_path, logger=logger)
+    # # getting the database connection
+    # conn = database.get_connection(database_path, logger=logger)
 
-    conn.close()
+    # conn.close()database_obj = database.dbResults(database_path, table_name)
+
+    database_obj = database.dbResults(database_path, table_name)
+    # run the loop. If this ncounters an error then the user needs to hit control c to exit
+    asyncio.get_event_loop().run_until_complete(database.perform_db_operation(database_obj, logger, cases, controls))
     end_time = datetime.now()
 
     logger.info(f"analysis end time: {end_time}")
