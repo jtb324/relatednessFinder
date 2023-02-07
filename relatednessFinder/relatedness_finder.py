@@ -1,8 +1,7 @@
+import asyncio
 from datetime import datetime
-import logging
 import typer
 from pathlib import Path
-import sqlite3
 import log
 
 import utilities
@@ -10,53 +9,6 @@ import database
 
 
 app = typer.Typer(add_completion=False)
-
-
-def construct_query_str(grid_list: list[str]) -> str:
-    """Function that will construct the sql string to use in the query
-
-    Parameters
-    ----------
-    grid_list : list[str]
-        list of IDs that will be used in the query
-
-    Returns
-    -------
-    str
-        returns a string to use in the where clause
-    """
-    start_str = "('"
-
-    start_str += "', '".join(grid_list)
-
-    start_str += "')"
-
-    return start_str
-
-
-
-
-def write_to_file(
-    results: list[tuple[int, str, str, int]], output_filename: Path, relatedness_thres: int
-) -> None:
-    """Function that will write the output to a file
-
-    Parameters
-    ----------
-    results : list[tuple[int, str, str, int]]
-        list of tuples that contain information about the row index, ID1, ID2, and the relatedness value from the database query
-
-    output_filename : Path
-        Path to the output file
-
-    relatedness_thres : int
-        threashold for the minimum relatedness allowed. Should be between 0-9. Nine will be considered the highest threshold. 0 would remove all of the non related people
-
-    """
-    with open(output_filename, "w", encoding="utf-8") as output:
-        output.write("ID1\tID2\tEstimated_relatedness\n")
-        for pair_result in results:
-            output.write(f"{pair_result[1]}\t{pair_result[2]}\t{pair_result[3]}\n")
 
 @app.command()
 def determine_relatedness(
@@ -76,7 +28,7 @@ def determine_relatedness(
         ..., "-t", "--table-name", help="name of the table within the database"
     ),
     output_path: Path = typer.Option(
-        ..., "-o", "--output", help="Filepath to write the output to."
+        Path("./test.txt"), "-o", "--output", help="Filepath to write the output to."
     ),
     relatedness_threshold: int = typer.Option(
         0,
@@ -132,28 +84,16 @@ def determine_relatedness(
     # only need the cases in this situation so we are ignoring the second return 
     grid_list = utilities.read_in_grids(grid_file, logger=logger)
 
-    logger.info(f"Identified {len(grid_list)} from the input list")
+    logger.info(f"Identified {len(grid_list)} IDs from the input list")
     # Constructing the grid string for all of the individuals in the query so
-    # that we can use that string in the where clause
-    grid_str = construct_query_str(grid_list)
 
-    # This will be the query string that we execute
-    sql_str = (
-        "SELECT * FROM "
-        + table_name
-        + f" WHERE ID1 in {grid_str}"
-        + f" AND ID2 in {grid_str};"
-    )
+    database_obj = database.dbResults(database_path, table_name)
 
-    logger.debug(f"String used for SQL Query: \n {sql_str}")
+    asyncio.run(database.perform_db_operation(database_obj, logger, grid_list))
 
-    # getting the database connection
-    conn = database.get_connection(database_path, logger = logger)
+    logger.debug(database_obj)
 
-    with conn:
-        result = database.get_relatedness(sql_str, conn, logger = logger)
-
-    write_to_file(result, output_path, relatedness_threshold)
+    utilities.write_to_file(database_obj, output_path, relatedness_threshold)
 
     end_time = datetime.now()
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "relatednessFinder"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["jtb324 <james.baker@vanderbilt.edu>"]
 readme="README.md"
@@ -11,6 +11,7 @@ relatedness_finder = "relatednessFinder.relatedness_finder:app"
 [tool.poetry.dependencies]
 python = "^3.10"
 typer = {extras = ["all"], version = "^0.7.0"}
+aiosqlite = "^0.18.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
