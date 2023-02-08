@@ -88,6 +88,7 @@ def create_logger(
 
     return logger
 
+
 def log_msg_debug(log_message: str = None):
     def log_decorator(func):
         @functools.wraps(func)
@@ -95,17 +96,23 @@ def log_msg_debug(log_message: str = None):
             logger = kwargs["logger"]
             logger.debug(log_message)
             if logging.getLevelName(logger.level) == "DEBUG":
-                args_repr = [repr(a) for a in args]                      
-                kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]  
-                signature = ", ".join(args_repr + kwargs_repr)           
-                logger.debug(f"calling the function {func.__name__} with the arguments: {signature}")
+                args_repr = [repr(a) for a in args]
+                kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+                signature = ", ".join(args_repr + kwargs_repr)
+                logger.debug(
+                    f"calling the function {func.__name__} with the arguments: {signature}"
+                )
             try:
                 return_val = func(*args, **kwargs)
             except Exception as e:
                 logger.critical(e)
-                logger.critical(f"Encountered an exception while running the function: {func.__name__}")
+                logger.critical(
+                    f"Encountered an exception while running the function: {func.__name__}"
+                )
                 typer.Abort()
                 return_val = 1
             return return_val
+
         return log_to_file
+
     return log_decorator

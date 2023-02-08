@@ -13,8 +13,8 @@ from log import log_msg_debug
 class dbResults:
     database_path: Path
     table_name: str
-    case_results: list[Any] = field(default_factory = list)
-    control_results: list[Any] = field(default_factory = list)
+    case_results: list[Any] = field(default_factory=list)
+    control_results: list[Any] = field(default_factory=list)
 
 
 @log_msg_debug("Attempting to connect to the database")
@@ -92,7 +92,7 @@ def get_relatedness(
     db_obj: dbResults,
     logger: logging.Logger,
 ) -> Generator[list[tuple[int, str, str, int]], None, None]:
-    """Function that will execute the query and return a generator 
+    """Function that will execute the query and return a generator
     object that has so many rows at a time
 
     Parameters
@@ -118,11 +118,5 @@ def get_relatedness(
         cursor = connection.cursor()
 
         cursor.execute(query)
-        while (rows := cursor.fetchmany(size=20)):
+        while rows := cursor.fetchmany(size=20):
             yield rows
-
-
-
-
-    
-    
