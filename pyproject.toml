@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "relatednessFinder"
-version = "0.2.0"
+version = "0.3.0"
 description = ""
 authors = ["jtb324 <james.baker@vanderbilt.edu>"]
 readme="README.md"
