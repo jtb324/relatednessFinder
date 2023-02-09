@@ -78,3 +78,9 @@ sqlite>.table
 * *log_to_console* - This flag is represented by --log-to-console. If the user provides this flag then output will be passed to the console through stdout. If not then the output will only be written to a log file.
 
 * *log filename* - This optional argument is represented by the --log-filename flag. This flag allows the user to craete a custom filename for the output log file. By default the program writes log output to test_determine_relatedness.log.
+
+An example of these commands is:
+
+```bash
+python3 relatedness_finder.py determine-relatedness -g {gene_file} -d {database_path} -t {table_name} --output {output_path} --log-filename {log filename} --loglevel verbose --log-to-console
+```
