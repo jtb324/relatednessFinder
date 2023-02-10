@@ -84,3 +84,43 @@ An example of these commands is:
 ```bash
 python3 relatedness_finder.py determine-relatedness -g {gene_file} -d {database_path} -t {table_name} --output {output_path} --log-filename {log filename} --loglevel verbose --log-to-console
 ```
+
+###*gather-distributions*
+This command is used to compare the distributions between two sets of IDs (typically cases and controls). Output will be written to two histograms :
+
+```bash
+python3 relatedness_finder.py determine-relatedness --help
+```
+
+**Required Inputs:**
+* *case_control_file* - The argument is the filepath to a tab separated text file that has two columns. The first column should be the grid ids and the second column should be the phenotype status. 0's will represent controls and 1's will represent cases. The following table shows an example of how the file should look. I've added a header line for display but the case_control_file input should not have a header line
+
+| GRID ID | PHENOTYPE STATUS |
+|:--------|:----------------:|
+|Patient 1|       1          |
+|Patient 2|       0          |
+
+* *output* - This is ust the path to write the output to. This should be a full filepath without a file suffix. The program will append _case.png or _controls.png to the returned histograms.
+
+* *database_path* - This is the filepath to the database on the server.
+
+* *table_name* - This will be the table name within the database. You can find this output by running the following commands
+
+```bash
+sqlite3 {path to database}
+
+sqlite>.table
+```
+
+**Optional Inputs:**
+* *loglevel* - This optional argument is represented by the --loglevel flag. This flag allows the user to set the log level as 'warning', 'verbose', or 'debug'. This levels go from the least informative to the most informative, respectively. Warning will only provide information about what parameters were passed to the program while debug will write more information about the whole process.
+
+* *log_to_console* - This flag is represented by --log-to-console. If the user provides this flag then output will be passed to the console through stdout. If not then the output will only be written to a log file.
+
+* *log filename* - This optional argument is represented by the --log-filename flag. This flag allows the user to craete a custom filename for the output log file. By default the program writes log output to test_determine_relatedness.log.
+
+An example of this command with all the optional arguments is shown below:
+
+```bash
+python3 relatedness_finder.py gather-distributions  case_control_file output_path database_path table_name --log-filename {log filename} --loglevel verbose --log-to-console
+```
