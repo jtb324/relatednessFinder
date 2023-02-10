@@ -45,7 +45,7 @@ This command should show a help message with all the arguments and the optional 
 
 The next sections will break down the commands for the relatednessFinder program. 
 
-###*determine-relatedness*
+### *determine-relatedness*
 This command is used to determine the relatedness between individuals in a list. It will return a text file where each row is a pair with the estimated relatedness between teh pair. You can see the arguments for this command by running:
 
 ```bash
@@ -85,7 +85,7 @@ An example of these commands is:
 python3 relatedness_finder.py determine-relatedness -g {gene_file} -d {database_path} -t {table_name} --output {output_path} --log-filename {log filename} --loglevel verbose --log-to-console
 ```
 
-###*gather-distributions*
+### *gather-distributions*
 This command is used to compare the distributions between two sets of IDs (typically cases and controls). Output will be written to two histograms :
 
 ```bash
