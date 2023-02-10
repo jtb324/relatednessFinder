@@ -12,6 +12,13 @@ If you wish to use this program first clone the repository using the following c
 git clone https://github.com/jtb324/relatednessFinder.git
 ```
 
+You have to also initialize the submodules so change directories into the relatednessFinder directory and then run the following two commands.
+
+```bash
+git submodule init
+git submodule update
+```
+
 Once you have cloned the repository you will need to create a virtual environment to properly install dependencies. It is recommended to use conda to create the virtual environment. There is a environment.yml file in the cloned repository so the following commands will create a virtual environment call "relatednessFinder"
 
 ```bash
