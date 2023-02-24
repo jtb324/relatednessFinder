@@ -1,8 +1,8 @@
-from typing import Generator
-from pathlib import Path
 from logging import Logger
-import matplotlib.pyplot as plt
+from pathlib import Path
+from typing import Generator
 
+import matplotlib.pyplot as plt
 from log import log_msg_debug
 
 

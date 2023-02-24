@@ -1,13 +1,11 @@
 from datetime import datetime
-import os
-import typer
 from pathlib import Path
-import log
 
 import analysis
-import utilities
 import database
-
+import log
+import typer
+import utilities
 
 app = typer.Typer(add_completion=False)
 

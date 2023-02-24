@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-import utilities
 import log
+import utilities
 
 
 @log.log_msg_debug("Reading in IDs")

@@ -40,7 +40,7 @@ Just make sure that you are using python version >= 3.10. If you are familiar wi
 poetry install
 ```
 
-Once you have the environment created you can call the program from the cloned directory using the command:
+Once you have the environment created you wil need to activate the environment. This will vary depending if your are using conda or a virtualenv. Once the environment is activated you can call the program from the cloned directory using the command:
 
 ```bash
 python3 relatednessFinder/relatedness_finder.py --help
@@ -50,7 +50,7 @@ This command should show a help message with all the arguments and the optional 
 
 ## Inputs for both commands:
 
-The next sections will break down the commands for the relatednessFinder program. 
+The next sections will break down the two commands for the relatednessFinder program. The two commands are the *determine-relatedness* and *gather-distributions* commands.
 
 ### *determine-relatedness*
 This command is used to determine the relatedness between individuals in a list. It will return a text file where each row is a pair with the estimated relatedness between teh pair. You can see the arguments for this command by running:
