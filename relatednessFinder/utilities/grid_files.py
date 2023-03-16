@@ -67,14 +67,17 @@ class FileReader:
             cases = []
             controls = []
             for line_num, line in enumerate(self.open_file):
-                split_line = line.strip().split("\t")
-                grid_id = split_line[0]
-                if len(split_line) != 2:
-                    raise utilities.IncorrectGridFileFormat(line_num, self.filepath)
-                if split_line[1] == "1":
-                    cases.append(grid_id)
-                elif split_line[0] == "0":
-                    controls.append(grid_id)
+                if "grids" in line.lower() or "grid" in line.lower():
+                    next(self.open_file)
+                else:
+                    split_line = line.strip().split("\t")
+                    grid_id = split_line[0]
+                    if len(split_line) != 2:
+                        raise utilities.IncorrectGridFileFormat(line_num, self.filepath)
+                    if split_line[1] == "1":
+                        cases.append(grid_id)
+                    elif split_line[0] == "0":
+                        controls.append(grid_id)
             logger.info(
                 f"Identified {len(cases)} case ids and {len(controls)} control ids in the grid file: {self.filepath}"
             )
@@ -83,11 +86,14 @@ class FileReader:
         else:
             return_list = []
             for line_num, line in enumerate(self.open_file):
-                split_line = line.strip().split("\t")
+                if "grids" in line.lower() or "grid" in line.lower():
+                    next(self.open_file)
+                else:
+                    split_line = line.strip().split("\t")
 
-                if len(split_line) != 2:
-                    raise utilities.IncorrectGridFileFormat(line_num, self.filepath)
-                return_list.append(split_line[0])
+                    if len(split_line) != 2:
+                        raise utilities.IncorrectGridFileFormat(line_num, self.filepath)
+                    return_list.append(split_line[0])
             logger.info(
                 f"Identified {len(return_list)} grids in the file: {self.filepath}"
             )
