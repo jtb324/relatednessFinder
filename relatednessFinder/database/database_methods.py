@@ -106,8 +106,8 @@ def construct_query_str(
 def get_relatedness(
     ind_list: list[str],
     db_obj: dbResults,
-    all_connections: bool,
     logger: logging.Logger,
+    all_connections: bool = False
 ) -> Generator[list[tuple[int, str, str, int]], None, None]:
     """Function that will execute the query and return a generator
     object that has so many rows at a time

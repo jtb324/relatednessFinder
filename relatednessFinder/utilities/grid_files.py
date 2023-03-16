@@ -5,59 +5,90 @@ import log
 import utilities
 
 
-@log.log_msg_debug("Reading in IDs")
-def read_in_grids(
-    grid_filepath: Path, logger: logging.Logger, case_or_control: str | None = None
-) -> list[str]:
-    """Function that will read in all of the IDs from the provided file.
+class FileReader:
+    def __init__(self, filepath: Path) -> None:
+        self.filepath = filepath
 
-    Parameters
-    ----------
-    grid_filepath : Path
-        path to a tab separated text file that list all the grids that the user
-        wishes to find values for. Expects two column: The IDs and phenotype (In
-        that order). Program expects no header
+    def __enter__(self) -> None:
+        """Method that will be called by the with context manager.
 
-    logger : logging.Logger
-        logging object
+        Raises
+        ------
+        OSError
+            raises OSError if the file can't be opened"""
+        try:
+            self.open_file = open(self.filepath, "r", encoding="utf-8")
+        except OSError as e:
+            print(
+                f"encountered an error while trying to open the file: {self.filepath}"
+            )
+            print(e)
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.open_file.close()
 
-    case_or_control : str
-        sting indicating if the user is trying to fid the cases of controls from a
-        file. If "cases" then the program will look for 1 in the phecode column if
-        controls then it will look for 0.
+    @log.log_msg_debug("Reading in IDs")
+    def read_in_grids(
+        self,
+        logger: logging.Logger,
+        cases_and_control: bool = False,
+    ) -> tuple[list[str], list[str] | None]:
+        """Function that will read in all of the IDs from the provided file.
 
-    Returns
-    -------
-    list[str]
-        returns a list of IDs
+        Parameters
+        ----------
+        grid_filepath : Path
+            path to a tab separated text file that list all the grids that the user
+            wishes to find values for. Expects two column: The IDs and phenotype (In
+            that order). Program expects no header
 
-    Raises
-    ------
-    IncorrectGridFileFormat
-        if the file is not formated where there is only a grid per line and the
-        phenotype status then this exception is raised
-    """
+        logger : logging.Logger
+            logging object
 
-    return_list = []
+        case_and_controls : bool
+            boolean indicating if the program needs to consider the
 
-    with open(grid_filepath, "r", encoding="utf-8") as grid_input:
-        match case_or_control:
-            case "cases":
-                search_val = "1"
-            case "controls":
-                search_val = "0"
-            case _:
-                search_val = None
+        Returns
+        -------
+        list[str]
+            returns a list of IDs
 
-        for line_num, line in enumerate(grid_input):
-            split_line = line.strip().split("\t")
+        Raises
+        ------
+        IncorrectGridFileFormat
+            if the file is not formated where there is only a grid per line and the
+            phenotype status then this exception is raised
+        """
 
-            if len(split_line) != 2:
-                raise utilities.IncorrectGridFileFormat(line_num, grid_filepath)
-            if search_val:
-                if split_line[1] == search_val:
-                    return_list.append(split_line[0])
-            else:
+        logger.debug("identifying grids within the provided file: {self.filepath}")
+
+        if cases_and_control:
+            cases = []
+            controls = []
+            for line_num, line in enumerate(self.open_file):
+                split_line = line.strip().split("\t")
+                grid_id = split_line[0]
+                if len(split_line) != 2:
+                    raise utilities.IncorrectGridFileFormat(line_num, self.filepath)
+                if split_line[1] == "1":
+                    cases.append(grid_id)
+                elif split_line[0] == "0":
+                    controls.append(grid_id)
+            logger.info(
+                f"Identified {len(cases)} case ids and {len(controls)} control ids in the grid file: {self.filepath}"
+            )
+            return cases, controls
+
+        else:
+            return_list = []
+            for line_num, line in enumerate(self.open_file):
+                split_line = line.strip().split("\t")
+
+                if len(split_line) != 2:
+                    raise utilities.IncorrectGridFileFormat(line_num, self.filepath)
                 return_list.append(split_line[0])
-
-    return return_list
+            logger.info(
+                f"Identified {len(return_list)} grids in the file: {self.filepath}"
+            )
+            return return_list, []

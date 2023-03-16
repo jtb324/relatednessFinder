@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
 from datetime import datetime
 from pathlib import Path
@@ -59,8 +59,8 @@ def determine_relatedness(
         False,
         "--all-connections",
         help="Normal the program only returns estimated relatedness for pairs where both individuals are in the grid file. If this flag is passed then the program will return all potential connections including individuals that are not in the grid file.",
-        is_flag=True
-    )
+        is_flag=True,
+    ),
 ) -> None:
     """Main function to pull the relatedness from the ersa database"""
     # getting the programs start time
@@ -92,16 +92,16 @@ def determine_relatedness(
 
     # We need to read in the grids. This function return a list of cases and controls. We
     # only need the cases in this situation so we are ignoring the second return
-    grid_list = utilities.read_in_grids(grid_file, logger=logger)
+    with utilities.FileReader(grid_file) as file_reader:
+        grid_list, _ = file_reader.read_in_grids( logger=logger)
 
-    logger.info(f"Identified {len(grid_list)} IDs from the input list")
     # Constructing the grid string for all of the individuals in the query so
 
     database_obj = database.dbResults(database_path, table_name)
 
     # run the loop. If this ncounters an error then the user needs to hit control c to exit
     relatedness_results = database.get_relatedness(
-        grid_list, database_obj, logger=logger
+        grid_list, database_obj, logger=logger, all_connections=all_connections
     )
 
     for val in relatedness_results:
@@ -181,16 +181,10 @@ def gather_distributions(
 
     logger.info(f"analysis start time: {start_time}")
 
-    # Read in the cases and controls
-    cases = utilities.read_in_grids(
-        case_control_file, logger=logger, case_or_control="cases"
-    )
-
-    controls = utilities.read_in_grids(
-        case_control_file, logger=logger, case_or_control="controls"
-    )
-
-    logger.info(f"Identified {len(cases)} cases and {len(controls)} controls")
+    with utilities.FileReader(case_control_file) as file_reader:
+        cases, controls = file_reader.read_in_grids(
+            logger=logger, case_and_control=True
+        )
 
     database_obj = database.dbResults(database_path, table_name)
 
