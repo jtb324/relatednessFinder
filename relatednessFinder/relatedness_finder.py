@@ -1,3 +1,5 @@
+#!/usr/bin/env python 
+
 from datetime import datetime
 from pathlib import Path
 
@@ -53,6 +55,12 @@ def determine_relatedness(
         "--log-filename",
         help="Name for the log output file.",
     ),
+    all_connections: bool = typer.Option(
+        False,
+        "--all-connections",
+        help="Normal the program only returns estimated relatedness for pairs where both individuals are in the grid file. If this flag is passed then the program will return all potential connections including individuals that are not in the grid file.",
+        is_flag=True
+    )
 ) -> None:
     """Main function to pull the relatedness from the ersa database"""
     # getting the programs start time

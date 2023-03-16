@@ -52,7 +52,7 @@ def get_connection(
 
 
 def construct_query_str(
-    grid_list: list[str], db_obj: dbResults, logger: logging.Logger
+    grid_list: list[str], db_obj: dbResults, all_connections: bool, logger: logging.Logger
 ) -> str:
     """Function that will construct the sql string to use in the query
 
@@ -60,6 +60,15 @@ def construct_query_str(
     ----------
     grid_list : list[str]
         list of IDs that will be used in the query
+
+    db_obj: dbResults
+        object that will have the results for the relatedness for cases and controls
+    
+    all_connections : bool
+        boolean indicating if the user wishes to identify all connections or just those in the grid file. This will differentiate the query between an AND or OR
+
+    logger : logging.Logger
+        logger object to keep track of the state of the program
 
     Returns
     -------
@@ -73,12 +82,20 @@ def construct_query_str(
     grid_str += "')"
 
     # This will be the query string that we execute
-    sql_str = (
-        "SELECT * FROM "
-        + db_obj.table_name
-        + f" WHERE ID1 in {grid_str}"
-        + f" AND ID2 in {grid_str};"
-    )
+    if all_connections:
+        sql_str = (
+            "SELECT * FROM "
+            + db_obj.table_name
+            + f" WHERE ID1 in {grid_str}"
+            + f" OR ID2 in {grid_str};"
+        )
+    else:
+        sql_str = (
+            "SELECT * FROM "
+            + db_obj.table_name
+            + f" WHERE ID1 in {grid_str}"
+            + f" AND ID2 in {grid_str};"
+        )
 
     logger.debug(f"String used for SQL Query: \n {sql_str}")
 
@@ -89,6 +106,7 @@ def construct_query_str(
 def get_relatedness(
     ind_list: list[str],
     db_obj: dbResults,
+    all_connections: bool,
     logger: logging.Logger,
 ) -> Generator[list[tuple[int, str, str, int]], None, None]:
     """Function that will execute the query and return a generator
@@ -103,19 +121,26 @@ def get_relatedness(
     db_obj : dbResults
         object that contains the results from the database in list, as well as the database path and the table name
 
+    all_connections : bool
+        boolean indicating if the user wishes to identify all connections or just those in the grid file. This will differentiate the query between an AND or OR
+
     logger : logging.Logger
         logging object
 
+    Returns
+    -------
+    Generator[list[tuple[int, str, str, int]], None, None]
+        returns a generator of list where the list contains all the information in the database row such as id, id1, id2, and the estimated_relatedness
     """
     # we need to get the database connection
     connection = get_connection(db_obj.database_path, logger=logger)
 
     # we need to then create the query string
-    query = construct_query_str(ind_list, db_obj, logger)
+    query = construct_query_str(ind_list, db_obj, all_connections, logger)
 
     with connection:
         cursor = connection.cursor()
 
         cursor.execute(query)
-        while rows := cursor.fetchmany(size=20):
+        while rows := cursor.fetchmany(size=40):
             yield rows
