@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "relatednessFinder"
-version = "0.3.0"
+version = "0.4.0"
 description = "python cli tool to analysis the pairwise relatedness of individuals within a database"
 authors = ["J.T. Baker <james.baker@vanderbilt.edu>"]
 maintainers = ["J.T. Baker <james.baker@vanderbilt.edu>"]
